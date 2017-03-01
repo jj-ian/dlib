@@ -35,6 +35,15 @@
 #include <dlib/gui_widgets.h>
 #include "render_face.hpp"
 
+#include <iostream>
+
+//cpr stuff
+
+#include <cpr/cpr.h>
+//#include <json.hpp>
+#include <string>
+
+//end cpr stuff
 using namespace dlib;
 using namespace std;
 
@@ -59,6 +68,7 @@ std::vector<cv::Point3d> get_3d_model_points()
     
 }
 
+//full_object_detection object - This object represents the location of an object in an image (as a rectangle) along with the positions of each of its constituent parts. Each part is a vector of points
 std::vector<cv::Point2d> get_2d_image_points(full_object_detection &d)
 {
     std::vector<cv::Point2d> image_points;
@@ -118,82 +128,91 @@ int main()
 #ifdef OPENCV_FACE_RENDER
         while(1)
 #else
-        while(!win.is_closed())
+            while(!win.is_closed())
 #endif
-        {
-            
-            if ( count == 0 )
-                t = cv::getTickCount();
+            {
+
+                if ( count == 0 )
+                    t = cv::getTickCount();
             // Grab a frame
-            cap >> im;
-            
+                cap >> im;
+
             // Resize image for face detection
-            cv::resize(im, im_small, cv::Size(), 1.0/FACE_DOWNSAMPLE_RATIO, 1.0/FACE_DOWNSAMPLE_RATIO);
-            
+                cv::resize(im, im_small, cv::Size(), 1.0/FACE_DOWNSAMPLE_RATIO, 1.0/FACE_DOWNSAMPLE_RATIO);
+
             // Change to dlib's image format. No memory is copied.
-            cv_image<bgr_pixel> cimg_small(im_small);
-            cv_image<bgr_pixel> cimg(im);
-            
+                cv_image<bgr_pixel> cimg_small(im_small);
+                cv_image<bgr_pixel> cimg(im);
+
 
             // Detect faces 
-            if ( count % SKIP_FRAMES == 0 )
-            {
-                faces = detector(cimg_small);
-            }
-            
-            // Pose estimation
-            std::vector<cv::Point3d> model_points = get_3d_model_points();
-            
-            
-            // Find the pose of each face.
-            std::vector<full_object_detection> shapes;
-            for (unsigned long i = 0; i < faces.size(); ++i)
-            {
-                rectangle r(
-                            (long)(faces[i].left() * FACE_DOWNSAMPLE_RATIO),
-                            (long)(faces[i].top() * FACE_DOWNSAMPLE_RATIO),
-                            (long)(faces[i].right() * FACE_DOWNSAMPLE_RATIO),
-                            (long)(faces[i].bottom() * FACE_DOWNSAMPLE_RATIO)
-                            );
-                full_object_detection shape = pose_model(cimg, r);
-                shapes.push_back(shape);
-#ifdef OPENCV_FACE_RENDER
-                render_face(im, shape);
-                std::vector<cv::Point2d> image_points = get_2d_image_points(shape);
-                double focal_length = im.cols;
-                cv::Mat camera_matrix = get_camera_matrix(focal_length, cv::Point2d(im.cols/2,im.rows/2));
-                cv::Mat rotation_vector;
-                cv::Mat rotation_matrix;
-                cv::Mat translation_vector;
+                if ( count % SKIP_FRAMES == 0 )
+                {
+                    //returns list of bounding boxes around all faces it can find in image
+                    faces = detector(cimg_small);
+                }
 
-                
-                cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type);
-                
-                cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
+            // Pose estimation
+                // 3d locations of model landmarks
+                std::vector<cv::Point3d> model_points = get_3d_model_points();
+
+
+            // Find the pose of each face.
+                std::vector<full_object_detection> shapes;
+                //faces is list of bounding boxes
+                for (unsigned long i = 0; i < faces.size(); ++i)
+                {
+                    rectangle r(
+                        (long)(faces[i].left() * FACE_DOWNSAMPLE_RATIO),
+                        (long)(faces[i].top() * FACE_DOWNSAMPLE_RATIO),
+                        (long)(faces[i].right() * FACE_DOWNSAMPLE_RATIO),
+                        (long)(faces[i].bottom() * FACE_DOWNSAMPLE_RATIO)
+                        );
+                    full_object_detection shape = pose_model(cimg, r);
+                    shapes.push_back(shape);
+#ifdef OPENCV_FACE_RENDER
+                    render_face(im, shape);
+                    std::vector<cv::Point2d> image_points = get_2d_image_points(shape);
+                    double focal_length = im.cols;
+                    cv::Mat camera_matrix = get_camera_matrix(focal_length, cv::Point2d(im.cols/2,im.rows/2));
+                    cv::Mat rotation_vector;
+                    cv::Mat rotation_matrix;
+                    cv::Mat translation_vector;
+
+
+                    cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type);
+
+                    cv::solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
 
                 //cv::Rodrigues(rotation_vector, rotation_matrix);
-               
-								std::vector<cv::Point3d> nose_end_point3D;
-								std::vector<cv::Point2d> nose_end_point2D;
-								nose_end_point3D.push_back(cv::Point3d(0,0,1000.0));
 
-								cv::projectPoints(nose_end_point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, nose_end_point2D);		
+                    std::vector<cv::Point3d> nose_end_point3D;
+                    std::vector<cv::Point2d> nose_end_point2D;
+                    nose_end_point3D.push_back(cv::Point3d(0,0,1000.0));
+
+                    cv::projectPoints(nose_end_point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, nose_end_point2D);		
 //                cv::Point2d projected_point = find_projected_point(rotation_matrix, translation_vector, camera_matrix, cv::Point3d(0,0,1000.0));
-								cv::line(im,image_points[0], nose_end_point2D[0], cv::Scalar(255,0,0), 2);
+                    cv::line(im,image_points[0], nose_end_point2D[0], cv::Scalar(255,0,0), 2);
 //                cv::line(im,image_points[0], projected_point, cv::Scalar(0,0,255), 2);
-                
-                
-                
-                
+
+                    //cpr test
+                    
+                    auto response = cpr::Post(cpr::Url{"localhost:8080"},
+                        cpr::Payload{{"key", "value"}});
+                    std::cout << response.text << std::endl;
+
+
+
+
 #endif
-            }
+                }
         		// Uncomment the line below to see FPS    
-            //cv::putText(im, cv::format("fps %.2f",fps), cv::Point(50, size.height - 50), cv::FONT_HERSHEY_COMPLEX, 1.5, cv::Scalar(0, 0, 255), 3);
-            
-            
+                cv::putText(im, cv::format("fps %.2f",fps), cv::Point(50, size.height - 50), cv::FONT_HERSHEY_COMPLEX, 1.5, cv::Scalar(0, 0, 255), 3);
+
+
             // Display it all on the screen
 #ifdef OPENCV_FACE_RENDER
-            
+
                 // Resize image for display
                 im_display = im;
                 cv::resize(im, im_display, cv::Size(), 0.5, 0.5);
@@ -201,8 +220,8 @@ int main()
 
                 // WaitKey slows down the runtime quite a lot
                 // So check every 15 frames
-            
-            
+
+
                 if ( count % 15 == 0)
                 {
                     int k = cv::waitKey(1);
@@ -212,39 +231,39 @@ int main()
                         return 0;
                     }
                 }
-            
-            
- 
+
+
+
 #else
- 
+
                 win.clear_overlay();
                 win.set_image(cimg);
                 win.add_overlay(render_face_detections(shapes));
 #endif
-            
-            count++;
-            
-            if ( count == 100)
-            {
-                t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
-                fps = 100.0/t;
-                count = 0;
-            }
-            
 
-            
+                count++;
+
+                if ( count == 100)
+                {
+                    t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
+                    fps = 100.0/t;
+                    count = 0;
+                }
+
+
+
+            }
+        }
+        catch(serialization_error& e)
+        {
+            cout << "You need dlib's default face landmarking model file to run this example." << endl;
+            cout << "You can get it from the following URL: " << endl;
+            cout << "   http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" << endl;
+            cout << endl << e.what() << endl;
+        }
+        catch(exception& e)
+        {
+            cout << e.what() << endl;
         }
     }
-    catch(serialization_error& e)
-    {
-        cout << "You need dlib's default face landmarking model file to run this example." << endl;
-        cout << "You can get it from the following URL: " << endl;
-        cout << "   http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" << endl;
-        cout << endl << e.what() << endl;
-    }
-    catch(exception& e)
-    {
-        cout << e.what() << endl;
-    }
-}
 
