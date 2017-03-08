@@ -110,6 +110,18 @@ int main()
         
         cv::Size size = im.size();
 
+        std::cout << "bigim height " << im.size().height << std::endl;
+        std::cout << "bigim width " << im.size().width << std::endl;
+
+        std::cout << "im_display height " << im_display.size().height << std::endl;
+        std::cout << "im_display width " << im_display.size().width << std::endl;
+
+        std::cout << "smallim height " << im_small.size().height << std::endl;
+        std::cout << "smallim width " << im_small.size().width << std::endl;
+        
+
+
+
         
         
 #ifndef OPENCV_FACE_RENDER 
@@ -192,13 +204,27 @@ int main()
 
                     cv::projectPoints(nose_end_point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, nose_end_point2D);		
 //                cv::Point2d projected_point = find_projected_point(rotation_matrix, translation_vector, camera_matrix, cv::Point3d(0,0,1000.0));
+                    //image_points[0] is the x,y coordinate at the tip of user's nose
+                    //nose_end_point2d[0] is the x,y coordinate at the end of the vector that extends from user's nose 
+                    
+                    std::cout << "imgpt: " << image_points[0].x << std::endl;
+                    std::cout << "nosept: " << nose_end_point2D[0].x << std::endl;
+
                     cv::line(im,image_points[0], nose_end_point2D[0], cv::Scalar(255,0,0), 2);
 //                cv::line(im,image_points[0], projected_point, cv::Scalar(0,0,255), 2);
 
                     //cpr test
+
+                   // im.size().height << std::endl;
+                    //normalize endpoint for motionportrait
+                    auto normalizedNoseEndPointX = nose_end_point2D[0].x / im.size().width;
+                    std::cout << "norm nose end point x " << normalizedNoseEndPointX << std::endl;
+                    auto normalizedNoseEndPointY = 1-(nose_end_point2D[0].y / im.size().height);
+                    std::cout << "norm nose end point y " << normalizedNoseEndPointY << std::endl;
+
                     
-                    auto response = cpr::Post(cpr::Url{"localhost:8080"},
-                        cpr::Payload{{"key", "value"}});
+                    auto response = cpr::Post(cpr::Url{"localhost:8081/api"},
+                        cpr::Payload{{"x", std::to_string(normalizedNoseEndPointX) },{"y", std::to_string(normalizedNoseEndPointY) },{"action","lookAt"}});
                     std::cout << response.text << std::endl;
 
 
