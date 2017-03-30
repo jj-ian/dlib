@@ -47,7 +47,7 @@
 using namespace dlib;
 using namespace std;
 
-#define FACE_DOWNSAMPLE_RATIO 4
+#define FACE_DOWNSAMPLE_RATIO 2
 #define SKIP_FRAMES 2
 #define OPENCV_FACE_RENDER
 
@@ -106,6 +106,7 @@ int main()
         cap >> im;
         cv::Mat im_small, im_display;
         cv::resize(im, im_small, cv::Size(), 1.0/FACE_DOWNSAMPLE_RATIO, 1.0/FACE_DOWNSAMPLE_RATIO);
+
         cv::resize(im, im_display, cv::Size(), 0.5, 0.5);
         
         cv::Size size = im.size();
@@ -162,6 +163,28 @@ int main()
                 {
                     //returns list of bounding boxes around all faces it can find in image
                     faces = detector(cimg_small);
+                    std::cout << "num faces: " << faces.size() << std::endl;
+
+                    auto payload = cpr::Payload{
+                        {"faceCount", std::to_string(faces.size())}
+                    };
+                    
+                    
+                    for (int i = 0; i < faces.size(); i++) {
+                        payload.AddPair({"facesX", std::to_string(double(faces[i].right())  / im_small.size().width )});
+                    }
+                        payload.AddPair({"facesX", "-1"});
+
+                    //pickup, send faces positions as payload
+
+
+                    /*
+                    auto response = cpr::Post(cpr::Url{"localhost:8080/api"}, cpr::Payload{
+                        {"faceCount", std::to_string(faces.size())}
+
+                    });*/
+                    auto response = cpr::Post(cpr::Url{"localhost:8080/api"}, payload);
+                    std::cout << response.text << std::endl;
                 }
 
             // Pose estimation
@@ -223,7 +246,7 @@ int main()
                     std::cout << "norm nose end point y " << normalizedNoseEndPointY << std::endl;
 
                     
-                    auto response = cpr::Post(cpr::Url{"localhost:8081/api"},
+                    auto response = cpr::Post(cpr::Url{"localhost:8080/api"},
                         cpr::Payload{{"x", std::to_string(normalizedNoseEndPointX) },{"y", std::to_string(normalizedNoseEndPointY) },{"action","lookAt"}});
                     std::cout << response.text << std::endl;
 
