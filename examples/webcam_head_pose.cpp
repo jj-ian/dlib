@@ -170,10 +170,20 @@ int main()
                     };
                     
                     
+                    // get the midpoint of each detected face, normalize it by the width of the frame, flip so MotionPortrait looks at you instead of with you, adn send it to server
                     for (int i = 0; i < faces.size(); i++) {
-                        payload.AddPair({"facesX", std::to_string(double(faces[i].right())  / im_small.size().width )});
+                        payload.AddPair({"facesX", std::to_string(
+                            1 - (double(faces[i].left() + faces[i].right()) / 2 / im_small.size().width) 
+                            )});
+                        payload.AddPair({"facesY", std::to_string(
+                            1 - (double(faces[i].top() + faces[i].bottom()) / 2 / im_small.size().height) 
+                            )});
+
                     }
-                        payload.AddPair({"facesX", "-1"});
+                    
+                    payload.AddPair({"facesX", "-1"});
+                    payload.AddPair({"facesY", "-1"});
+
 
                     //pickup, send faces positions as payload
 
