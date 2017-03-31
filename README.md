@@ -1,5 +1,12 @@
+Make some changes to `/examples/webcam_head_pose.cpp`
 
-                              dlib C++ library
+`cd /examples/build`
+
+`cmake --build .`
+
+The executable is `/examples/build/webcam_head_pose`
+
+dlib C++ library
 
 Dlib is a modern C++ toolkit containing machine learning algorithms and tools
 for creating complex software in C++ to solve real world problems.  See
